@@ -1,7 +1,8 @@
 import argparse
-from langchain.vectorstores.chroma import Chroma
-from langchain.prompts import ChatPromptTemplate
-from langchain_community.llms.ollama import Ollama
+import os
+from langchain_chroma import Chroma
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_ollama import OllamaLLM
 
 from get_embedding_function import get_embedding_function
 
@@ -30,7 +31,11 @@ def main():
 def query_rag(query_text: str):
     # Prepare the DB.
     embedding_function = get_embedding_function()
-    db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
+    db = Chroma(
+        persist_directory=CHROMA_PATH, 
+        embedding_function=embedding_function,
+        collection_name="default_collection"  # Add a default collection name
+    )
 
     # Search the DB.
     results = db.similarity_search_with_score(query_text, k=5)
@@ -40,7 +45,7 @@ def query_rag(query_text: str):
     prompt = prompt_template.format(context=context_text, question=query_text)
     # print(prompt)
 
-    model = Ollama(model="mistral")
+    model = OllamaLLM(model="gemma3:4b", base_url=os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1"))
     response_text = model.invoke(prompt)
 
     sources = [doc.metadata.get("id", None) for doc, _score in results]
